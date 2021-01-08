@@ -66,7 +66,7 @@ int main(int argc, char* argv[]) {
 	puts("Connected");
 
 	do {
-		if ((recv_size = recv(s, server_reply, DEFAULT_BUFLEN, 0)) == SOCKET_ERROR)
+		if ((recv_size = recv(s, server_reply, DEFAULT_BUFLEN - 1, 0)) == SOCKET_ERROR)
 		{
 			puts("recv failed");
 		}
